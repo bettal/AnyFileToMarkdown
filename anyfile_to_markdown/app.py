@@ -7,7 +7,7 @@ import datetime
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTextEdit, QFileDialog,
-    QMessageBox, QMenuBar,
+    QMessageBox, QMenuBar, QCheckBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 
@@ -59,6 +59,11 @@ class AnyFileToMarkdownApp(QMainWindow):
         self.out_label.setStyleSheet("color: gray")
         out_row.addWidget(self.out_btn)
         out_row.addWidget(self.out_label, 1)
+
+        self.auto_save_cb = QCheckBox("Auto-save as .md in same folder")
+        self.auto_save_cb.setChecked(True)
+        self.auto_save_cb.toggled.connect(self._on_auto_save_toggled)
+        out_row.addWidget(self.auto_save_cb)
         layout.addLayout(out_row)
 
         self.options_panel = OptionsPanel()
@@ -98,10 +103,12 @@ class AnyFileToMarkdownApp(QMainWindow):
             self.fmt_selector.set_from_path(path)
             ext = self.fmt_selector.current_ext
             self.options_panel.show_for_format(ext)
-            default_out = os.path.splitext(path)[0] + ".md"
-            if not self.output_path:
-                self.output_path = default_out
-                self.out_label.setText(default_out)
+            if self.auto_save_cb.isChecked():
+                self.output_path = os.path.splitext(path)[0] + ".md"
+                self.out_label.setText(self.output_path + " (auto)")
+            elif not self.output_path:
+                self.output_path = os.path.splitext(path)[0] + ".md"
+                self.out_label.setText(self.output_path)
 
     def _browse_output(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -110,6 +117,15 @@ class AnyFileToMarkdownApp(QMainWindow):
         if path:
             self.output_path = path
             self.out_label.setText(path)
+            self.auto_save_cb.setChecked(False)
+
+    def _on_auto_save_toggled(self, checked):
+        self.out_btn.setEnabled(not checked)
+        if checked and self.input_path:
+            self.output_path = os.path.splitext(self.input_path)[0] + ".md"
+            self.out_label.setText(self.output_path + " (auto)")
+        elif not checked:
+            self.out_label.setText("")
 
     def _log(self, msg):
         self.log_signal.emit(msg)
