@@ -1,72 +1,59 @@
-# pdf2md-gui — Project Knowledge Base
+# AnyFile to Markdown — Project Knowledge Base
 
 ## Description
-GUI for PyMuPDF4LLM — converts PDF to Markdown with PyQt6 interface.
+Universal file to Markdown converter with PyQt6 GUI. Uses Microsoft MarkItDown engine.
 
 ## Package info
-- **Package name:** `convert-pdf-to-markdown`
-- **Binary:** `/usr/bin/convert-pdf-to-markdown`
-- **Desktop entry:** `/usr/share/applications/convert-pdf-to-markdown.desktop`
+- **Package name:** `anyfile-to-markdown`
+- **Binary:** `/usr/bin/anyfile-to-markdown`
+- **Desktop entry:** `/usr/share/applications/anyfile-to-markdown.desktop`
 - **Menu category:** Development (KDE Plasma / GNOME)
 
 ## Project structure
 ```
-ConvertPdfToMarkdown/
-├── pdf2md_gui/         # Python package (main app in app.py)
-├── debian/             # Debian packaging
-│   ├── control         # Package metadata, deps
-│   ├── changelog       # Version history
-│   ├── postinst        # Post-install: pymupdf4llm compat check
-│   ├── rules           # Build rules (dh)
-│   ├── install         # File install mapping
-│   ├── convert-pdf-to-markdown.desktop  # KDE/GNOME menu entry
-│   ├── convert-pdf-to-markdown-launcher  # Shell launcher
-│   ├── bump-version.sh # Auto version bump
-│   └── postinst        # Post-install script
-├── icons/              # Application icons (Candy Icons style)
-│   └── hicolor/
-│       ├── scalable/apps/   # SVG source
-│       ├── 48x48/apps/      # PNG 48px (menu)
-│       └── 256x256/apps/    # PNG 256px (window/taskbar)
-├── dist/               # Built .deb packages
-├── Makefile            # Build & release automation
-├── setup.py            # Python package metadata
-└── AGENTS.md           # This file
+AnyFileToMarkdown/
+├── anyfile_to_markdown/   # Python package
+│   ├── app.py             # Main GUI window
+│   ├── converters/        # Conversion engines
+│   │   ├── markitdown_engine.py  # MarkItDown wrapper
+│   │   └── pymupdf_engine.py     # PyMuPDF4LLM fallback (PDF)
+│   ├── widgets/           # PyQt6 widgets
+│   │   ├── format_selector.py    # Format auto-detection
+│   │   └── options_panel.py      # Dynamic per-format options
+│   └── utils/
+│       └── page_parser.py        # Page range parser
+├── debian/                # Debian packaging
+├── installer/             # Windows (NSIS) + macOS (.dmg)
+├── icons/                 # App icons
+├── Makefile               # Build automation
+├── setup.py               # Python package metadata
+└── AGENTS.md              # This file
 ```
 
 ## Build commands
 ```bash
-make build              # Build .deb (output goes to dist/)
-make bump-patch         # Increment patch version + update files
-make bump-minor         # Increment minor version
-make bump-major         # Increment major version
-make release            # bump-patch + build (default)
-make VERSION=minor release  # bump-minor + build
-```
-
-Manual build:
-```bash
-dpkg-buildpackage -b -uc -us
-mv ../convert-pdf-to-markdown_*.deb ../convert-pdf-to-markdown_*.buildinfo ../convert-pdf-to-markdown_*.changes dist/
+make build-deb    # .deb for Debian 13
+make build-win    # .exe installer for Windows 10
+make build-mac    # .dmg for macOS Tahoe 26
+make build-all    # everything
+make bump-patch   # increment version + update files
+make release      # bump-patch + build-all
 ```
 
 ## Key dependencies (runtime)
-- python3-pyqt6
-- python3-pymupdf (apt) — upgraded to latest via pip in postinst
-- python3-pip (for pymupdf4llm upgrade)
+- `markitdown[pptx,docx,xlsx,pdf]` (from PyPI, MIT)
+- PyQt6 (system or pip)
+- pymupdf4llm (optional, for advanced PDF options)
 
 ## Post-install logic (debian/postinst)
-1. Fetch latest pymupdf4llm version from PyPI
-2. `pip install --upgrade --ignore-installed` (flag avoids debian pymupdf conflict)
-3. Compatibility test: create temp PDF, convert via pymupdf4llm
-4. On failure — fall back to apt version
+1. Install/upgrade `markitdown` via pip (--ignore-installed)
+2. Quick import check
 
 ## Version management
 - `setup.py` and `debian/changelog` must stay in sync
 - `debian/bump-version.sh` updates both
-- Changelog follows debian format for `dpkg-buildpackage`
+- Current version: 2.0.0
 
-## Known issues
-- debian-provided PyMuPDF can't be uninstalled by pip (no RECORD file)
-  → fixed with `--ignore-installed` flag
-- postinst uses `set -e` → all commands must tolerate failure or use `|| true`
+## Supported formats
+PDF, PPTX, DOCX, XLSX, XLS, images (JPEG, PNG, WebP, BMP, TIFF),
+HTML, CSV, JSON, XML, EPUB, ZIP, MP3, WAV

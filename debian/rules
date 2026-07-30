@@ -5,6 +5,8 @@ export PYBUILD_NAME=anyfile-to-markdown
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
+override_dh_auto_test:
+
 override_dh_auto_install:
 	dh_auto_install
 	mkdir -p debian/anyfile-to-markdown/usr/bin

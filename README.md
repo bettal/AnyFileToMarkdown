@@ -1,60 +1,62 @@
-# Convert PDF to Markdown
+# AnyFile to Markdown
 
-Graphical interface for [PyMuPDF4LLM](https://github.com/pymupdf/pymupdf4llm) — convert PDF files to Markdown.
+Universal file to Markdown converter with PyQt6 GUI.
 
-## Features
+Converts **PDF, PPTX, DOCX, XLSX, images, HTML, CSV, JSON, XML, EPUB, ZIP, audio** and more to clean Markdown.
 
-- Select PDF and output file via dialogs
-- Configure pages, DPI, image format, table strategy, margins
-- Toggle image writing/embedding/ignoring
-- Page chunks, force text, show progress, ignore code
-- Conversion runs in background thread (UI stays responsive)
-- Automatic `pymupdf4llm` version check and compatibility test on install
+Powered by [MarkItDown](https://github.com/microsoft/markitdown) by Microsoft.
 
-## Requirements
+## Supported formats
 
-- Python 3.10+
-- PyQt6
-- pymupdf4llm (auto-checked on .deb install)
+| Category | Formats |
+|---|---|
+| Documents | PDF, DOCX, PPTX, XLSX, XLS |
+| Images | JPEG, PNG, WebP, BMP, TIFF |
+| Web | HTML, HTM |
+| Data | CSV, JSON, XML |
+| E-books | EPUB |
+| Archives | ZIP |
+| Audio | MP3, WAV |
 
 ## Installation
 
-### Debian package
+### Debian 13 (Trixie)
 
 ```bash
-sudo dpkg -i dist/convert-pdf-to-markdown_*.deb
-sudo apt-get install -f  # install dependencies
+sudo dpkg -i dist/anyfile-to-markdown_*.deb
+sudo apt-get install -f
 ```
 
-### Direct (via pip)
+### Windows 10
+
+Download `AnyFileToMarkdown-Setup.exe` from Releases and run.
+
+### macOS Tahoe 26
+
+Download `AnyFileToMarkdown-macOS.dmg`, mount and drag to Applications.
+
+### pip (any OS)
 
 ```bash
-pip install -e .
-convert-pdf-to-markdown
+pip install anyfile-to-markdown
+anyfile-to-markdown
 ```
 
 ### Run without install
 
 ```bash
-python3 -m pdf2md_gui.app
+python3 -m anyfile_to_markdown.app
+```
+
+## Build from source
+
+```bash
+make build-deb   # Debian .deb
+make build-win   # Windows .exe (requires PyInstaller + NSIS)
+make build-mac   # macOS .dmg (requires PyInstaller + create-dmg)
+make build-all   # all three
 ```
 
 ## License
 
-Copyright (C) 2025 stas
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published
-by the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-This project is based on [PyMuPDF4LLM](https://github.com/pymupdf/pymupdf4llm)
-by Artifex Software, Inc., also licensed under AGPL v3.
+AGPL v3. Based on [MarkItDown](https://github.com/microsoft/markitdown) by Microsoft (MIT) and [PyMuPDF4LLM](https://github.com/pymupdf/pymupdf4llm) by Artifex (AGPL v3).
