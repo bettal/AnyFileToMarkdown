@@ -1,30 +1,27 @@
-Source: convert-pdf-to-markdown
+Source: anyfile-to-markdown
 Section: utils
 Priority: optional
 Maintainer: stas <stas@example.com>
 Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools
 Standards-Version: 4.6.2
-Homepage: https://github.com/bettal/ConvertPdfToMarkdown
-Vcs-Git: https://github.com/bettal/ConvertPdfToMarkdown.git
-Vcs-Browser: https://github.com/bettal/ConvertPdfToMarkdown
+Homepage: https://github.com/bettal/AnyFileToMarkdown
+Vcs-Git: https://github.com/bettal/AnyFileToMarkdown.git
+Vcs-Browser: https://github.com/bettal/AnyFileToMarkdown
 Rules-Requires-Root: no
 
-Package: convert-pdf-to-markdown
+Package: anyfile-to-markdown
 Architecture: all
 Depends: ${python3:Depends}, ${misc:Depends},
          python3-pyqt6,
-         python3-pymupdf,
          python3-pip
-Description: GUI for PyMuPDF4LLM — convert PDF files to Markdown
- Graphical interface for the pymupdf4llm library.
- Provides an easy way to convert PDF documents to
- Markdown format with image extraction, page selection,
- table detection, and other options.
+Recommends: python3-pymupdf
+Description: Universal file to Markdown converter — PDF, DOCX, PPTX, XLSX, images, HTML, EPUB and more
+ Graphical interface for the MarkItDown library by Microsoft.
+ Provides an easy way to convert various document formats to
+ Markdown with a clean PyQt6 interface.
  .
- Uses PyQt6 for the graphical interface and
- PyMuPDF4LLM as the conversion engine.
+ Supported formats: PDF, PowerPoint, Word, Excel, images,
+ HTML, CSV, JSON, XML, EPUB, ZIP, audio, and more.
  .
  On first install, the package checks PyPI for the
- latest pymupdf4llm version and tests compatibility.
- If compatible, the latest version is used;
- otherwise the apt-provided version is kept.
+ latest markitdown version and tests compatibility.

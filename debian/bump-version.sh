@@ -1,14 +1,10 @@
 #!/bin/sh
 set -e
 
-# bump-version.sh — bump debian package version and update setup.py
-# Usage: ./debian/bump-version.sh [major|minor|patch]
-
 COMPONENT="${1:-patch}"
 CHANGELOG="debian/changelog"
 SETUP_PY="setup.py"
 
-# Read current version from changelog (first line)
 CURRENT=$(head -1 "$CHANGELOG" | sed -n 's/.*(\([0-9.]*\)-.*/\1/p')
 MAJOR=$(echo "$CURRENT" | cut -d. -f1)
 MINOR=$(echo "$CURRENT" | cut -d. -f2)
@@ -27,10 +23,9 @@ DATE=$(date -R)
 
 echo "Bumping version: $CURRENT -> $NEW_VERSION"
 
-# Update debian/changelog: prepend new entry
 tmp=$(mktemp)
 cat > "$tmp" <<EOF
-convert-pdf-to-markdown (${DEB_VERSION}) unstable; urgency=medium
+anyfile-to-markdown (${DEB_VERSION}) unstable; urgency=medium
 
   * Automatic version bump.
 
@@ -40,7 +35,6 @@ EOF
 cat "$CHANGELOG" >> "$tmp"
 mv "$tmp" "$CHANGELOG"
 
-# Update setup.py
 sed -i "s/version=\"${CURRENT}\"/version=\"${NEW_VERSION}\"/" "$SETUP_PY"
 
 echo "Done. New version: $NEW_VERSION (deb: $DEB_VERSION)"

@@ -1,3 +1,14 @@
+anyfile-to-markdown (2.0.0-1) unstable; urgency=medium
+
+  * Major rewrite: ConvertPdfToMarkdown → AnyFileToMarkdown.
+  * New engine: MarkItDown by Microsoft (multi-format support).
+  * New GUI: format auto-detection + dynamic options per format.
+  * Supported formats: PDF, PPTX, DOCX, XLSX, images, HTML, EPUB, CSV, JSON, XML, ZIP, audio.
+  * Opcional PyMuPDF4LLM fallback for advanced PDF settings.
+  * Updated packaging for Debian 13 (trixie).
+
+ -- stas <stas@example.com>  Thu, 30 Jul 2026 14:10:22 +0200
+
 convert-pdf-to-markdown (1.0.6-1) unstable; urgency=medium
 
   * Automatic version bump.

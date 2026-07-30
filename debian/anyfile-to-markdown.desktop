@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=AnyFile to Markdown
+Comment=Convert any document to Markdown format
+Exec=anyfile-to-markdown
+Terminal=false
+Type=Application
+Categories=Qt;Development;
+Icon=anyfile-to-markdown
+StartupNotify=true

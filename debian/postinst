@@ -1,82 +1,34 @@
 #!/bin/sh
 set -e
 
-# postinst: check pymupdf4llm version compatibility on install
-#
-# Strategy:
-#   1. Query PyPI for the latest version of pymupdf4llm.
-#   2. Try to install it via pip (user-site or system).
-#   3. Run a quick compatibility test (import + convert a tiny PDF).
-#   4. If the test passes — keep the latest version.
-#   5. If the test fails — revert to the version shipped by apt.
+# postinst: ensure markitdown is available
 
 PYTHON=$(which python3)
-PACKAGE="pymupdf4llm"
-LOG="/var/log/convert-pdf-to-markdown-install.log"
+PACKAGE="markitdown"
+LOG="/var/log/anyfile-to-markdown-install.log"
 
-echo "[convert-pdf-to-markdown] postinst started at $(date)" >> "$LOG" 2>&1
+echo "[anyfile-to-markdown] postinst started at $(date)" >> "$LOG" 2>&1
 
-# --- step 1: get latest version from PyPI ---
-echo "[convert-pdf-to-markdown] Checking latest $PACKAGE version on PyPI..." >> "$LOG"
-LATEST=$($PYTHON -c "
-import urllib.request, json
-try:
-    data = json.loads(urllib.request.urlopen('https://pypi.org/pypi/$PACKAGE/json', timeout=10).read())
-    print(data['info']['version'])
-except Exception:
-    print('')
-" 2>/dev/null)
+echo "[anyfile-to-markdown] Checking $PACKAGE availability..." >> "$LOG"
+$PYTHON -m pip install "$PACKAGE" --upgrade --ignore-installed --break-system-packages >> "$LOG" 2>&1 || true
 
-if [ -z "$LATEST" ]; then
-    echo "[convert-pdf-to-markdown] Could not fetch latest version, keeping apt version." >> "$LOG"
-    exit 0
-fi
-
-echo "[convert-pdf-to-markdown] Latest version on PyPI: $LATEST" >> "$LOG"
-
-# --- step 2: install latest via pip (ignore-installed to work around debian pymupdf) ---
-echo "[convert-pdf-to-markdown] Installing $PACKAGE==$LATEST via pip..." >> "$LOG"
-$PYTHON -m pip install "$PACKAGE==$LATEST" --upgrade --ignore-installed --break-system-packages >> "$LOG" 2>&1 || true
-
-# --- step 3: compatibility test ---
-echo "[convert-pdf-to-markdown] Running compatibility test..." >> "$LOG"
+echo "[anyfile-to-markdown] Running compatibility test..." >> "$LOG"
 TEST_RESULT=$($PYTHON -c "
-import pymupdf4llm, pymupdf, io, sys, tempfile, os
-try:
-    tmp = tempfile.NamedTemporaryFile(suffix='.pdf', delete=False)
-    doc = pymupdf.open()
-    doc.new_page()
-    doc.new_page()
-    doc[0].insert_text((50, 50), 'Test', fontsize=12)
-    doc.save(tmp.name)
-    doc.close()
-    md = pymupdf4llm.to_markdown(tmp.name, show_progress=False)
-    os.unlink(tmp.name)
-    print('OK')
-except Exception as e:
-    print('FAIL:' + str(e))
+from markitdown import MarkItDown
+print('OK')
 " 2>> "$LOG" || true)
 
 case "$TEST_RESULT" in
     OK)
-        echo "[convert-pdf-to-markdown] Compatibility test PASSED — keeping $PACKAGE==$LATEST" >> "$LOG"
-        ;;
-    FAIL:*)
-        REASON=${TEST_RESULT#FAIL:}
-        echo "[convert-pdf-to-markdown] Compatibility test FAILED: $REASON" >> "$LOG"
-        echo "[convert-pdf-to-markdown] Reverting to apt-provided version..." >> "$LOG"
-        apt-get install --reinstall --yes python3-pymupdf4llm 2>/dev/null || \
-        $PYTHON -m pip install "$PACKAGE" --no-deps --ignore-installed --break-system-packages >> "$LOG" 2>&1 || true
-        echo "[convert-pdf-to-markdown] Fallback done." >> "$LOG"
+        echo "[anyfile-to-markdown] markitdown OK" >> "$LOG"
         ;;
     *)
-        echo "[convert-pdf-to-markdown] Compatibility test produced unknown result, keeping current." >> "$LOG"
+        echo "[anyfile-to-markdown] markitdown FAILED to import" >> "$LOG"
         ;;
 esac
 
-# --- step 4: refresh icon caches ---
 gtk-update-icon-cache /usr/share/icons/hicolor/ 2>/dev/null || true
 kbuildsycoca7 --noincremental 2>/dev/null || kbuildsycoca6 --noincremental 2>/dev/null || true
 
-echo "[convert-pdf-to-markdown] postinst finished at $(date)" >> "$LOG"
+echo "[anyfile-to-markdown] postinst finished at $(date)" >> "$LOG"
 exit 0
