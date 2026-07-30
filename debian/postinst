@@ -1,7 +1,10 @@
 #!/bin/sh
 set -e
 
-# postinst: ensure markitdown is available
+# postinst: ensure markitdown is available + auto-fix dependencies
+
+# Auto-install missing dependencies (run once after dpkg install)
+apt-get install -f -y >/dev/null 2>&1 || true
 
 PYTHON=$(which python3)
 PACKAGE="markitdown"

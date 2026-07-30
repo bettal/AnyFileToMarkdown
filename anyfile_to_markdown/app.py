@@ -6,7 +6,7 @@ import datetime
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QSpinBox, QTextEdit, QFileDialog,
+    QLabel, QPushButton, QTextEdit, QFileDialog,
     QMessageBox, QMenuBar,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -15,15 +15,6 @@ from anyfile_to_markdown import __version__
 from anyfile_to_markdown.widgets.format_selector import FormatSelector
 from anyfile_to_markdown.widgets.options_panel import OptionsPanel
 from anyfile_to_markdown.converters import engine_for
-
-
-SUPPORTED_EXTS = {
-    ".pdf", ".pptx", ".docx", ".xlsx", ".xls",
-    ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif",
-    ".html", ".htm", ".csv", ".json", ".xml",
-    ".epub", ".zip",
-    ".mp3", ".wav",
-}
 
 
 class AnyFileToMarkdownApp(QMainWindow):
@@ -174,6 +165,43 @@ class AnyFileToMarkdownApp(QMainWindow):
         )
         thread.start()
 
+    def _collect_pptx_kwargs(self):
+        op = self.options_panel
+        kwargs = {}
+        slides_raw = op.pptx_slides.text().strip()
+        if slides_raw:
+            kwargs["pages"] = slides_raw
+        if op.pptx_disable_notes.isChecked():
+            kwargs["disable_notes"] = True
+        if op.pptx_enable_slides.isChecked():
+            kwargs["enable_slides"] = True
+        if op.pptx_disable_image.isChecked():
+            kwargs["disable_image"] = True
+        if op.pptx_keep_data_uris.isChecked():
+            kwargs["keep_data_uris"] = True
+        llm_model = op.pptx_llm_model.text().strip()
+        llm_prompt = op.pptx_llm_prompt.text().strip()
+        if llm_model:
+            from openai import OpenAI
+            kwargs["llm_client"] = OpenAI()
+            kwargs["llm_model"] = llm_model
+            if llm_prompt:
+                kwargs["llm_prompt"] = llm_prompt
+        return kwargs
+
+    def _collect_img_kwargs(self):
+        op = self.options_panel
+        kwargs = {}
+        llm_model = op.img_llm_model.text().strip()
+        llm_prompt = op.img_llm_prompt.text().strip()
+        if llm_model:
+            from openai import OpenAI
+            kwargs["llm_client"] = OpenAI()
+            kwargs["llm_model"] = llm_model
+            if llm_prompt:
+                kwargs["llm_prompt"] = llm_prompt
+        return kwargs
+
     def _run_conversion(self, path, out, ext):
         try:
             self._log(f"Opening: {path}")
@@ -188,8 +216,8 @@ class AnyFileToMarkdownApp(QMainWindow):
 
             kwargs = {}
             if ext == ".pdf":
-                pages_raw = str(self.options_panel.pdf_pages.value())
-                if pages_raw.strip():
+                pages_raw = self.options_panel.pdf_pages.text().strip()
+                if pages_raw:
                     kwargs["pages"] = pages_raw
                 use_pymupdf = self.options_panel.pdf_engine.currentIndex() == 1
                 if use_pymupdf and ext == ".pdf":
@@ -210,6 +238,12 @@ class AnyFileToMarkdownApp(QMainWindow):
                         kwargs["force_text"] = self.options_panel.pdf_force_text.isChecked()
                         kwargs["show_progress"] = self.options_panel.pdf_show_progress.isChecked()
                         kwargs["ignore_code"] = self.options_panel.pdf_ignore_code.isChecked()
+
+            elif ext == ".pptx":
+                kwargs = self._collect_pptx_kwargs()
+
+            elif ext in {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif"}:
+                kwargs = self._collect_img_kwargs()
 
             self._log("Converting to Markdown...")
             md_text = engine.convert(path, **kwargs)

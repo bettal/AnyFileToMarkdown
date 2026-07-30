@@ -1,12 +1,13 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QSpinBox, QCheckBox, QGroupBox, QStackedWidget,
+    QSpinBox, QCheckBox, QGroupBox, QStackedWidget, QLineEdit,
 )
 
 
 PAGE_PDF = 0
 PAGE_PPTX = 1
-PAGE_SIMPLE = 2
+PAGE_IMAGE = 2
+PAGE_SIMPLE = 3
 
 
 class OptionsPanel(QWidget):
@@ -20,6 +21,7 @@ class OptionsPanel(QWidget):
 
         self.stack.addWidget(self._build_pdf_page())
         self.stack.addWidget(self._build_pptx_page())
+        self.stack.addWidget(self._build_image_page())
         self.stack.addWidget(self._build_simple_page())
 
         self.stack.setCurrentIndex(PAGE_SIMPLE)
@@ -33,8 +35,7 @@ class OptionsPanel(QWidget):
 
         r0 = QHBoxLayout()
         r0.addWidget(QLabel("Pages (e.g. 1-5,7,10-N):"))
-        self.pdf_pages = QSpinBox()
-        self.pdf_pages.setRange(1, 9999)
+        self.pdf_pages = QLineEdit()
         r0.addWidget(self.pdf_pages)
         grid.addLayout(r0)
 
@@ -117,8 +118,7 @@ class OptionsPanel(QWidget):
 
         r0 = QHBoxLayout()
         r0.addWidget(QLabel("Slides (e.g. 1-5,7,10-N):"))
-        self.pptx_slides = QSpinBox()
-        self.pptx_slides.setRange(1, 9999)
+        self.pptx_slides = QLineEdit()
         r0.addWidget(self.pptx_slides)
         grid.addLayout(r0)
 
@@ -126,11 +126,43 @@ class OptionsPanel(QWidget):
         self.pptx_disable_notes = QCheckBox("Disable presenter notes")
         self.pptx_disable_image = QCheckBox("Disable image extraction")
         self.pptx_enable_slides = QCheckBox("Add slide delimiters (---)")
+        self.pptx_keep_data_uris = QCheckBox("Embed images as base64")
         fl.addWidget(self.pptx_disable_notes)
         fl.addWidget(self.pptx_disable_image)
         fl.addWidget(self.pptx_enable_slides)
+        fl.addWidget(self.pptx_keep_data_uris)
         fl.addStretch()
         grid.addLayout(fl)
+
+        llm_group = QGroupBox("LLM Image Description (requires OpenAI API key)")
+        llm_layout = QVBoxLayout(llm_group)
+        self.pptx_llm_model = QLineEdit()
+        self.pptx_llm_model.setPlaceholderText("Model (e.g. gpt-4o)")
+        llm_layout.addWidget(self.pptx_llm_model)
+        self.pptx_llm_prompt = QLineEdit()
+        self.pptx_llm_prompt.setPlaceholderText("Custom prompt (optional)")
+        llm_layout.addWidget(self.pptx_llm_prompt)
+        grid.addWidget(llm_group)
+
+        layout.addWidget(group)
+        layout.addStretch()
+        return page
+
+    def _build_image_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        group = QGroupBox("Image Options (OCR / Description)")
+        grid = QVBoxLayout(group)
+
+        llm_group = QGroupBox("LLM Image Description (requires OpenAI API key)")
+        llm_layout = QVBoxLayout(llm_group)
+        self.img_llm_model = QLineEdit()
+        self.img_llm_model.setPlaceholderText("Model (e.g. gpt-4o)")
+        llm_layout.addWidget(self.img_llm_model)
+        self.img_llm_prompt = QLineEdit()
+        self.img_llm_prompt.setPlaceholderText("Custom prompt (optional)")
+        llm_layout.addWidget(self.img_llm_prompt)
+        grid.addWidget(llm_group)
 
         layout.addWidget(group)
         layout.addStretch()
@@ -150,5 +182,7 @@ class OptionsPanel(QWidget):
             self.stack.setCurrentIndex(PAGE_PDF)
         elif ext == ".pptx":
             self.stack.setCurrentIndex(PAGE_PPTX)
+        elif ext in {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif"}:
+            self.stack.setCurrentIndex(PAGE_IMAGE)
         else:
             self.stack.setCurrentIndex(PAGE_SIMPLE)

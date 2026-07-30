@@ -46,8 +46,10 @@ make release      # bump-patch + build-all
 - pymupdf4llm (optional, for advanced PDF options)
 
 ## Post-install logic (debian/postinst)
-1. Install/upgrade `markitdown` via pip (--ignore-installed)
-2. Quick import check
+1. `apt-get install -f -y` — auto-fix dependencies
+2. Install/upgrade `markitdown` via pip (--ignore-installed)
+3. Quick import check
+4. Update desktop/icon caches
 
 ## Version management
 - `setup.py` and `debian/changelog` must stay in sync
@@ -57,3 +59,31 @@ make release      # bump-patch + build-all
 ## Supported formats
 PDF, PPTX, DOCX, XLSX, XLS, images (JPEG, PNG, WebP, BMP, TIFF),
 HTML, CSV, JSON, XML, EPUB, ZIP, MP3, WAV
+
+## GUI options per format
+
+### PDF
+- Pages, DPI, Image format, Table strategy, Margins, Page width
+- Flags: write/embed/ignore images, ignore graphics, page chunks, force text, show progress, ignore code
+- Engine: MarkItDown / PyMuPDF4LLM (advanced)
+
+### PPTX
+- Slides range, disable notes, slide delimiters, disable images, embed as base64
+- LLM image descriptions (model, custom prompt) — requires OPENAI_API_KEY
+
+### Images (JPEG, PNG, WebP, BMP, TIFF)
+- LLM model + custom prompt for OCR/description
+
+### Other formats
+- No format-specific options (uses MarkItDown defaults)
+
+## Image handling in PPTX (MarkItDown limitation)
+MarkItDown PPTX converter **does not save images to disk**. Options:
+1. **Embed as base64** — data URIs in markdown
+2. **LLM description** — AI-generated text description (requires API key)
+3. **Default** — placeholder links like `![Figure 1](figure1.jpg)`
+
+## MarkItDown options (passed via kwargs)
+- `llm_client`, `llm_model`, `llm_prompt` — LLM for image descriptions
+- `exiftool_path` — EXIF metadata extraction
+- `docintel_endpoint`, `docintel_credential`, `docintel_file_types`, `docintel_api_version` — Azure Document Intelligence
