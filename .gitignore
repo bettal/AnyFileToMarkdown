@@ -19,4 +19,5 @@ debian/debhelper-build-stamp
 *.exe
 *.spec
 *.ico
-*.zip.opencode/
+*.zip
+.opencode/
