@@ -1,24 +1,29 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="convert-pdf-to-markdown",
-    version="1.0.6",
-    description="Graphical interface for PyMuPDF4LLM — convert PDF to Markdown",
+    name="anyfile-to-markdown",
+    version="2.0.0",
+    description="Universal file to Markdown converter — PDF, DOCX, PPTX, XLSX, images, HTML, EPUB and more",
     long_description=open("README.md").read() if __import__("os").path.exists("README.md") else "",
     long_description_content_type="text/markdown",
     author="stas",
-    url="https://github.com/bettal/ConvertPdfToMarkdown",
+    url="https://github.com/bettal/AnyFileToMarkdown",
     license="GNU AGPL v3",
     license_files=["LICENSE"],
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=[
         "PyQt6",
-        "pymupdf4llm>=1.28.0",
+        "markitdown>=0.1.6",
     ],
+    extras_require={
+        "pdf-advanced": ["pymupdf4llm"],
+        "ocr": ["markitdown[ocr]"],
+        "all": ["markitdown[all]", "pymupdf4llm"],
+    },
     entry_points={
         "console_scripts": [
-            "convert-pdf-to-markdown=pdf2md_gui.app:main",
+            "anyfile-to-markdown=anyfile_to_markdown.app:main",
         ],
     },
     classifiers=[

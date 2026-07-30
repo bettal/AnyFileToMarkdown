@@ -1,59 +1,83 @@
-# pdf2md-gui — Graphical interface for PyMuPDF4LLM
-# Copyright (C) 2025  stas
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import sys
 import os
+import traceback
 import threading
+import datetime
+from importlib.metadata import version
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QCheckBox,
-    QSpinBox, QTextEdit, QFileDialog, QMessageBox, QGroupBox, QFrame
+    QSpinBox, QTextEdit, QFileDialog, QMessageBox, QGroupBox,
+    QMenuBar
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
-import pymupdf4llm
+from markitdown import MarkItDown
+
+from anyfile_to_markdown import __version__
+
+SUPPORTED_FORMATS = {
+    ".pdf":  "PDF Document",
+    ".pptx": "PowerPoint Presentation",
+    ".docx": "Word Document",
+    ".xlsx": "Excel Spreadsheet",
+    ".xls":  "Excel Spreadsheet (old)",
+    ".jpg":  "JPEG Image",
+    ".jpeg": "JPEG Image",
+    ".png":  "PNG Image",
+    ".webp":"WebP Image",
+    ".bmp":  "BMP Image",
+    ".tiff": "TIFF Image",
+    ".tif":  "TIFF Image",
+    ".html": "HTML Document",
+    ".htm":  "HTML Document",
+    ".csv":  "CSV Data",
+    ".json": "JSON Data",
+    ".xml":  "XML Data",
+    ".epub": "EPUB E-book",
+    ".zip":  "ZIP Archive",
+    ".mp3":  "MP3 Audio",
+    ".wav":  "WAV Audio",
+}
 
 
-class PDFToMarkdownApp(QMainWindow):
+class AnyFileToMarkdownApp(QMainWindow):
+    log_signal = pyqtSignal(str)
+    conversion_done = pyqtSignal(str, str, str)
+
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("PDF to Markdown Converter")
+        self.setWindowTitle("AnyFile to Markdown")
         self.resize(720, 720)
 
-        self.pdf_path = ""
+        self.input_path = ""
         self.output_path = ""
+        self.log_file = None
+
+        self.log_signal.connect(self._append_log)
+        self.conversion_done.connect(self._on_conversion_done)
+
+        self._create_menu()
 
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # PDF file
-        pdf_group = QGroupBox("PDF File")
-        pdf_row = QHBoxLayout(pdf_group)
-        self.pdf_btn = QPushButton("Browse PDF...")
-        self.pdf_btn.clicked.connect(self._browse_pdf)
-        self.pdf_label = QLabel()
-        self.pdf_label.setStyleSheet("color: gray")
-        pdf_row.addWidget(self.pdf_btn)
-        pdf_row.addWidget(self.pdf_label, 1)
-        layout.addWidget(pdf_group)
+        input_group = QGroupBox("Input File")
+        input_row = QHBoxLayout(input_group)
+        self.open_btn = QPushButton("Browse...")
+        self.open_btn.clicked.connect(self._browse_file)
+        self.file_label = QLabel()
+        self.file_label.setStyleSheet("color: gray")
+        input_row.addWidget(self.open_btn)
+        input_row.addWidget(self.file_label, 1)
+        layout.addWidget(input_group)
 
-        # Output file
+        self.fmt_label = QLabel()
+        layout.addWidget(self.fmt_label)
+
         out_group = QGroupBox("Output")
         out_row = QHBoxLayout(out_group)
         self.out_btn = QPushButton("Save as...")
@@ -64,7 +88,6 @@ class PDFToMarkdownApp(QMainWindow):
         out_row.addWidget(self.out_label, 1)
         layout.addWidget(out_group)
 
-        # Options
         opts_group = QGroupBox("Options")
         opts_grid = QVBoxLayout(opts_group)
 
@@ -110,7 +133,6 @@ class PDFToMarkdownApp(QMainWindow):
 
         layout.addWidget(opts_group)
 
-        # Flags
         flags_group = QGroupBox("Flags")
         flags_row = QHBoxLayout(flags_group)
         self.cb_write_img = QCheckBox("Write images to disk")
@@ -139,12 +161,10 @@ class PDFToMarkdownApp(QMainWindow):
         flags2_row.addStretch()
         layout.addWidget(flags2_group)
 
-        # Convert button
         self.convert_btn = QPushButton("Convert")
         self.convert_btn.clicked.connect(self._convert)
         layout.addWidget(self.convert_btn)
 
-        # Log
         log_group = QGroupBox("Log")
         log_layout = QVBoxLayout(log_group)
         self.log_text = QTextEdit()
@@ -152,16 +172,45 @@ class PDFToMarkdownApp(QMainWindow):
         log_layout.addWidget(self.log_text)
         layout.addWidget(log_group, 1)
 
-    def _browse_pdf(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select PDF file", "", "PDF files (*.pdf);;All files (*.*)"
+    def _create_menu(self):
+        menubar = self.menuBar()
+        help_menu = menubar.addMenu("Help")
+        help_menu.addAction("About", self._show_about)
+
+    def _show_about(self):
+        QMessageBox.about(
+            self,
+            "About AnyFile to Markdown",
+            f"<b>AnyFile to Markdown</b><br>"
+            f"Version: {__version__}<br>"
+            f"Author: stas<br>"
+            f"License: GNU AGPL v3<br><br>"
+            f"Engine: MarkItDown by Microsoft<br>"
+            f"<a href='https://github.com/bettal/AnyFileToMarkdown'>Repository</a>"
         )
+
+    def _detect_format(self, path):
+        ext = os.path.splitext(path)[1].lower()
+        return SUPPORTED_FORMATS.get(ext, "Unknown format")
+
+    def _browse_file(self):
+        filters = (
+            "Supported files (*.pdf *.pptx *.docx *.xlsx *.xls "
+            "*.jpg *.jpeg *.png *.webp *.bmp *.tiff *.tif "
+            "*.html *.htm *.csv *.json *.xml *.epub *.zip "
+            "*.mp3 *.wav);;"
+            "All files (*.*)"
+        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select file", "", filters)
         if path:
-            self.pdf_path = path
-            self.pdf_label.setText(path)
+            self.input_path = path
+            self.file_label.setText(path)
+            fmt = self._detect_format(path)
+            self.fmt_label.setText(f"Detected format: {fmt}")
+            default_out = os.path.splitext(path)[0] + ".md"
             if not self.output_path:
-                self.output_path = os.path.splitext(path)[0] + ".md"
-                self.out_label.setText(self.output_path)
+                self.output_path = default_out
+                self.out_label.setText(default_out)
 
     def _browse_output(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -172,88 +221,70 @@ class PDFToMarkdownApp(QMainWindow):
             self.out_label.setText(path)
 
     def _log(self, msg):
-        self.log_text.append(msg)
+        self.log_signal.emit(msg)
+
+    def _append_log(self, msg):
+        stamp = datetime.datetime.now().strftime("%H:%M:%S")
+        line = f"[{stamp}] {msg}"
+        self.log_text.append(line)
         self.log_text.verticalScrollBar().setValue(
             self.log_text.verticalScrollBar().maximum()
         )
-        QApplication.processEvents()
+        if self.log_file:
+            self.log_file.write(line + "\n")
+            self.log_file.flush()
 
-    def _parse_pages(self, raw: str, total: int):
-        if not raw.strip():
-            return None
-        result = []
-        for part in raw.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            if "-" in part:
-                a, b = part.split("-", 1)
-                a = a.strip()
-                b = b.strip()
-                start = int(a) - 1 if a else 0
-                end = total - 1 if b.upper() == "N" else int(b) - 1
-                result.extend(range(start, end + 1))
-            else:
-                result.append(int(part) - 1)
-        return sorted(set(r for r in result if 0 <= r < total))
+    def _on_conversion_done(self, status, title, message):
+        self.convert_btn.setEnabled(True)
+        self.convert_btn.setText("Convert")
+        if self.log_file:
+            self.log_file.close()
+            self.log_file = None
+        if status == "success":
+            QMessageBox.information(self, title, message)
+        else:
+            QMessageBox.critical(self, title, message)
 
     def _convert(self):
-        if not self.pdf_path or not os.path.isfile(self.pdf_path):
-            QMessageBox.critical(self, "Error", "Please select a valid PDF file.")
+        if not self.input_path or not os.path.isfile(self.input_path):
+            QMessageBox.critical(self, "Error", "Please select a valid file.")
             return
 
-        out = self.output_path or os.path.splitext(self.pdf_path)[0] + ".md"
+        out = self.output_path or os.path.splitext(self.input_path)[0] + ".md"
         self.output_path = out
         self.out_label.setText(out)
-
-        kwargs = {}
-        pages_raw = self.pages_edit.text().strip()
-        if pages_raw:
-            kwargs["pages"] = pages_raw
-
-        kwargs["dpi"] = self.dpi_spin.value()
-        kwargs["image_format"] = self.img_fmt.currentText()
-        kwargs["table_strategy"] = self.table_strat.currentText()
-        kwargs["page_width"] = self.pw_spin.value()
-        kwargs["margins"] = self.margins_spin.value()
-        kwargs["write_images"] = self.cb_write_img.isChecked()
-        kwargs["embed_images"] = self.cb_embed_img.isChecked()
-        kwargs["ignore_images"] = self.cb_ignore_img.isChecked()
-        kwargs["ignore_graphics"] = self.cb_ignore_gfx.isChecked()
-        kwargs["page_chunks"] = self.cb_page_chunks.isChecked()
-        kwargs["force_text"] = self.cb_force_text.isChecked()
-        kwargs["show_progress"] = self.cb_show_progress.isChecked()
-        kwargs["ignore_code"] = self.cb_ignore_code.isChecked()
 
         self.convert_btn.setEnabled(False)
         self.convert_btn.setText("Converting...")
         self.log_text.clear()
 
+        log_path = out + ".log"
+        try:
+            if self.log_file:
+                self.log_file.close()
+            self.log_file = open(log_path, "w", encoding="utf-8")
+        except Exception:
+            self.log_file = None
+
         thread = threading.Thread(
-            target=self._run_conversion, args=(self.pdf_path, out, kwargs), daemon=True
+            target=self._run_conversion, args=(self.input_path, out), daemon=True
         )
         thread.start()
 
-    def _run_conversion(self, pdf, out, kwargs):
+    def _run_conversion(self, path, out):
         try:
-            self._log(f"Opening: {pdf}")
+            self._log(f"Opening: {path}")
+            fmt = self._detect_format(path)
+            self._log(f"Format: {fmt}")
+            self._log(f"Output: {out}")
 
-            pages_arg = kwargs.pop("pages", None)
-            if pages_arg is not None:
-                import pymupdf
-                with pymupdf.open(pdf) as doc:
-                    total = doc.page_count
-                parsed = self._parse_pages(pages_arg, total)
-                if parsed is not None:
-                    kwargs["pages"] = parsed
-                    self._log(f"Pages selected: {len(parsed)} of {total}")
-                else:
-                    self._log(f"All {total} pages selected")
-            else:
-                self._log("All pages selected")
+            self._log("Converting with MarkItDown...")
+            md = MarkItDown()
+            result = md.convert(path)
+            md_text = result.markdown
 
-            self._log("Converting to Markdown...")
-            md_text = pymupdf4llm.to_markdown(pdf, **kwargs)
+            if not md_text:
+                self._log("WARNING: Conversion returned empty result!")
 
             with open(out, "w", encoding="utf-8") as f:
                 f.write(md_text)
@@ -264,21 +295,22 @@ class PDFToMarkdownApp(QMainWindow):
                 f"~{len(md_text.splitlines())} lines"
             )
 
-            QMessageBox.information(
-                self, "Success", f"Converted successfully!\nSaved to:\n{out}"
+            self.conversion_done.emit(
+                "success", "Success",
+                f"Converted successfully!\nSaved to:\n{out}"
             )
 
         except Exception as e:
             self._log(f"ERROR: {e}")
-            QMessageBox.critical(self, "Error", str(e))
-        finally:
-            self.convert_btn.setEnabled(True)
-            self.convert_btn.setText("Convert")
+            self._log(f"TRACEBACK:\n{traceback.format_exc()}")
+            self.conversion_done.emit("error", "Error", str(e))
 
 
 def main():
     app = QApplication(sys.argv)
-    window = PDFToMarkdownApp()
+    app.setApplicationName("AnyFile to Markdown")
+    app.setDesktopFileName("anyfile-to-markdown")
+    window = AnyFileToMarkdownApp()
     window.show()
     sys.exit(app.exec())
 
