@@ -134,14 +134,47 @@ class OptionsPanel(QWidget):
         fl.addStretch()
         grid.addLayout(fl)
 
-        llm_group = QGroupBox("LLM Image Description (requires OpenAI API key)")
+        # LLM Section
+        llm_group = QGroupBox("LLM Image Description (free cloud providers)")
         llm_layout = QVBoxLayout(llm_group)
-        self.pptx_llm_model = QLineEdit()
-        self.pptx_llm_model.setPlaceholderText("Model (e.g. gpt-4o)")
-        llm_layout.addWidget(self.pptx_llm_model)
+
+        # Model URL field
+        url_layout = QHBoxLayout()
+        url_layout.addWidget(QLabel("Model URL:"))
+        self.pptx_llm_url = QLineEdit()
+        self.pptx_llm_url.setPlaceholderText(
+            "Paste model URL from browser (e.g. https://openrouter.ai/models/mistralai/pixtral-12b:free)"
+        )
+        self.pptx_llm_url.textChanged.connect(self._on_pptx_url_changed)
+        url_layout.addWidget(self.pptx_llm_url)
+        llm_layout.addLayout(url_layout)
+
+        # Detected provider label
+        self.pptx_provider_label = QLabel("")
+        self.pptx_provider_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.pptx_provider_label.setWordWrap(True)
+        llm_layout.addWidget(self.pptx_provider_label)
+
+        # API Key field
+        key_layout = QHBoxLayout()
+        key_layout.addWidget(QLabel("API Key:"))
+        self.pptx_llm_key = QLineEdit()
+        self.pptx_llm_key.setPlaceholderText("API Key (or leave empty to use env var)")
+        self.pptx_llm_key.setEchoMode(QLineEdit.EchoMode.Password)
+        key_layout.addWidget(self.pptx_llm_key)
+        llm_layout.addLayout(key_layout)
+
+        # Custom prompt
         self.pptx_llm_prompt = QLineEdit()
         self.pptx_llm_prompt.setPlaceholderText("Custom prompt (optional)")
         llm_layout.addWidget(self.pptx_llm_prompt)
+
+        # Free models hint
+        self.pptx_free_hint = QLabel("")
+        self.pptx_free_hint.setStyleSheet("color: #666; font-size: 10px;")
+        self.pptx_free_hint.setWordWrap(True)
+        llm_layout.addWidget(self.pptx_free_hint)
+
         grid.addWidget(llm_group)
 
         layout.addWidget(group)
@@ -154,14 +187,42 @@ class OptionsPanel(QWidget):
         group = QGroupBox("Image Options (OCR / Description)")
         grid = QVBoxLayout(group)
 
-        llm_group = QGroupBox("LLM Image Description (requires OpenAI API key)")
+        # LLM Section
+        llm_group = QGroupBox("LLM Image Description (free cloud providers)")
         llm_layout = QVBoxLayout(llm_group)
-        self.img_llm_model = QLineEdit()
-        self.img_llm_model.setPlaceholderText("Model (e.g. gpt-4o)")
-        llm_layout.addWidget(self.img_llm_model)
+
+        url_layout = QHBoxLayout()
+        url_layout.addWidget(QLabel("Model URL:"))
+        self.img_llm_url = QLineEdit()
+        self.img_llm_url.setPlaceholderText(
+            "Paste model URL from browser (e.g. https://openrouter.ai/models/mistralai/pixtral-12b:free)"
+        )
+        self.img_llm_url.textChanged.connect(self._on_img_url_changed)
+        url_layout.addWidget(self.img_llm_url)
+        llm_layout.addLayout(url_layout)
+
+        self.img_provider_label = QLabel("")
+        self.img_provider_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.img_provider_label.setWordWrap(True)
+        llm_layout.addWidget(self.img_provider_label)
+
+        key_layout = QHBoxLayout()
+        key_layout.addWidget(QLabel("API Key:"))
+        self.img_llm_key = QLineEdit()
+        self.img_llm_key.setPlaceholderText("API Key (or leave empty to use env var)")
+        self.img_llm_key.setEchoMode(QLineEdit.EchoMode.Password)
+        key_layout.addWidget(self.img_llm_key)
+        llm_layout.addLayout(key_layout)
+
         self.img_llm_prompt = QLineEdit()
         self.img_llm_prompt.setPlaceholderText("Custom prompt (optional)")
         llm_layout.addWidget(self.img_llm_prompt)
+
+        self.img_free_hint = QLabel("")
+        self.img_free_hint.setStyleSheet("color: #666; font-size: 10px;")
+        self.img_free_hint.setWordWrap(True)
+        llm_layout.addWidget(self.img_free_hint)
+
         grid.addWidget(llm_group)
 
         layout.addWidget(group)
@@ -176,6 +237,33 @@ class OptionsPanel(QWidget):
         layout.addWidget(label)
         layout.addStretch()
         return page
+
+    # URL change handlers
+    def _on_pptx_url_changed(self, url: str):
+        from anyfile_to_markdown.utils.llm_models import parse_model_url, PROVIDER_CONFIG
+        parsed = parse_model_url(url)
+        if parsed:
+            self.pptx_provider_label.setText(f"Provider: {parsed['provider']} • Base URL: {parsed['base_url']} • Model: {parsed['model_id']}")
+            if parsed['free_models']:
+                self.pptx_free_hint.setText(f"Free models: {', '.join(parsed['free_models'])}")
+            else:
+                self.pptx_free_hint.setText("")
+        else:
+            self.pptx_provider_label.setText("Provider: not recognized (paste model URL from browser)")
+            self.pptx_free_hint.setText("")
+
+    def _on_img_url_changed(self, url: str):
+        from anyfile_to_markdown.utils.llm_models import parse_model_url
+        parsed = parse_model_url(url)
+        if parsed:
+            self.img_provider_label.setText(f"Provider: {parsed['provider']} • Base URL: {parsed['base_url']} • Model: {parsed['model_id']}")
+            if parsed['free_models']:
+                self.img_free_hint.setText(f"Free models: {', '.join(parsed['free_models'])}")
+            else:
+                self.img_free_hint.setText("")
+        else:
+            self.img_provider_label.setText("Provider: not recognized (paste model URL from browser)")
+            self.img_free_hint.setText("")
 
     def show_for_format(self, ext: str):
         if ext == ".pdf":

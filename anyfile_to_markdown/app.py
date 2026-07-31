@@ -15,6 +15,7 @@ from anyfile_to_markdown import __version__
 from anyfile_to_markdown.widgets.format_selector import FormatSelector
 from anyfile_to_markdown.widgets.options_panel import OptionsPanel
 from anyfile_to_markdown.converters import engine_for
+from anyfile_to_markdown.utils.llm_models import parse_model_url, build_llm_kwargs
 
 
 class AnyFileToMarkdownApp(QMainWindow):
@@ -181,6 +182,24 @@ class AnyFileToMarkdownApp(QMainWindow):
         )
         thread.start()
 
+    def _collect_llm_kwargs(self, url_field, key_field, prompt_field):
+        """Collect LLM kwargs from URL-based fields."""
+        url = url_field.text().strip()
+        api_key = key_field.text().strip()
+        prompt = prompt_field.text().strip()
+
+        if not url:
+            return {}
+
+        parsed = parse_model_url(url)
+        if not parsed:
+            return {}
+
+        kwargs = build_llm_kwargs(parsed, api_key)
+        if prompt:
+            kwargs["llm_prompt"] = prompt
+        return kwargs
+
     def _collect_pptx_kwargs(self):
         op = self.options_panel
         kwargs = {}
@@ -195,28 +214,19 @@ class AnyFileToMarkdownApp(QMainWindow):
             kwargs["disable_image"] = True
         if op.pptx_keep_data_uris.isChecked():
             kwargs["keep_data_uris"] = True
-        llm_model = op.pptx_llm_model.text().strip()
-        llm_prompt = op.pptx_llm_prompt.text().strip()
-        if llm_model:
-            from openai import OpenAI
-            kwargs["llm_client"] = OpenAI()
-            kwargs["llm_model"] = llm_model
-            if llm_prompt:
-                kwargs["llm_prompt"] = llm_prompt
+
+        # LLM kwargs from URL-based fields
+        llm_kwargs = self._collect_llm_kwargs(
+            op.pptx_llm_url, op.pptx_llm_key, op.pptx_llm_prompt
+        )
+        kwargs.update(llm_kwargs)
         return kwargs
 
     def _collect_img_kwargs(self):
         op = self.options_panel
-        kwargs = {}
-        llm_model = op.img_llm_model.text().strip()
-        llm_prompt = op.img_llm_prompt.text().strip()
-        if llm_model:
-            from openai import OpenAI
-            kwargs["llm_client"] = OpenAI()
-            kwargs["llm_model"] = llm_model
-            if llm_prompt:
-                kwargs["llm_prompt"] = llm_prompt
-        return kwargs
+        return self._collect_llm_kwargs(
+            op.img_llm_url, op.img_llm_key, op.img_llm_prompt
+        )
 
     def _run_conversion(self, path, out, ext):
         try:
